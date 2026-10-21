@@ -67,7 +67,29 @@ Open the forwarded **port 3000** link. If Google sign-in returns an `auth/unauth
 - The date is calculated in the browser's local timezone. If you travel or change the device timezone around midnight, the local-day boundary can change.
 - Your other records are stored under `users/{uid}/{collection}/{documentId}` and sync across devices when using the same account.
 
-## 5. Deploy (optional)
+## 6. AI progress coach (optional)
+
+The AI Coach uses an OpenAI API call from a server-side Next.js route. It verifies the Firebase ID token, reads only the authenticated user's DAYFRAME records with Firebase Admin, and stores daily/weekly assessments under `users/{uid}/ai_assessments`. The API key and Firebase service-account credentials must remain server-only.
+
+1. Create an OpenAI API key in your OpenAI developer account and make sure API billing/limits are configured.
+2. In Firebase Console → Project settings → Service accounts, generate a private key for the service account of this project. **Treat this JSON as a password**; never commit it, paste it into chat, or expose it to the browser.
+3. Add these server-only values to your ignored local `.env.local` file:
+   ```dotenv
+   OPENAI_API_KEY=your_openai_api_key
+   OPENAI_MODEL=gpt-4o-mini
+   FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
+   ```
+   Paste the entire service-account JSON as a single line for `FIREBASE_SERVICE_ACCOUNT_KEY`. Keep it private. In a hosted deployment, use the host's encrypted environment-variable settings instead of committing credentials.
+4. Install the added server SDK and restart Next.js:
+   ```bash
+   npm install
+   npm run dev
+   ```
+5. Open **AI Coach** while signed in. It generates and caches one daily verdict per local date; use the weekly report tab to generate a detailed weekly assessment. Reassessing explicitly makes a new API call.
+
+The coach's execution score is a heuristic, not an objective measure of personal worth. It should cite logged evidence and identify missing data rather than guessing why something happened. AI provider usage can incur charges; configure usage limits and review prompts/data before using it.
+
+## 7. Deploy (optional)
 
 Deploy the separate DAYFRAME repository to Vercel or another Next.js host. Add the same six `NEXT_PUBLIC_FIREBASE_*` values in the host's environment settings. Add the production hostname to Firebase Authentication → Settings → Authorized domains. Do not place this app in the Random Hours repository.
 
