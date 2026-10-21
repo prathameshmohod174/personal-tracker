@@ -21,6 +21,8 @@ type GymLog = { id: string; workout_date: string; activity: string; completed: b
 type Review = { id: string; week_start: string; wins: string; blockers: string; next_priorities: string };
 
 const areas = ["University", "Career", "Random Hours", "Fitness", "Personal"];
+const SESSION_MAX_AGE_MS = 16 * 60 * 60 * 1000;
+const SESSION_STARTED_KEY = "dayframe_session_started_at";
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const datePlus = (days: number) => { const d = new Date(); d.setDate(d.getDate()+days); return d.toLocaleDateString("en-CA"); };
 const dueLabel = (s?: string | null) => {
@@ -90,17 +92,42 @@ export default function Home() {
 
   useEffect(() => {
     if (!configured) { setLoading(false); return; }
+    let expiryTimer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (currentUser) => {
+      if (expiryTimer) clearTimeout(expiryTimer);
       setUserEmail(currentUser?.email ?? "");
       setUserId(currentUser?.uid ?? "");
       if (currentUser) {
+        const storedStart = window.localStorage.getItem(SESSION_STARTED_KEY);
+        const parsedStart = storedStart ? Number(storedStart) : NaN;
+        const sessionStart = Number.isFinite(parsedStart) && parsedStart > 0 ? parsedStart : Date.now();
+        if (!storedStart || !Number.isFinite(parsedStart) || parsedStart <= 0) {
+          window.localStorage.setItem(SESSION_STARTED_KEY, String(sessionStart));
+        }
+        const remaining = SESSION_MAX_AGE_MS - (Date.now() - sessionStart);
+        if (remaining <= 0) {
+          window.localStorage.removeItem(SESSION_STARTED_KEY);
+          await firebaseSignOut(firebaseAuth);
+          setMessage("Your 16-hour session expired. Please sign in again.");
+          setLoading(false);
+          return;
+        }
+        expiryTimer = setTimeout(async () => {
+          window.localStorage.removeItem(SESSION_STARTED_KEY);
+          await firebaseSignOut(firebaseAuth);
+          setMessage("Your 16-hour session expired. Please sign in again.");
+        }, remaining);
         try { await startOrLoadDay(currentUser.uid); await loadData(currentUser.uid); }
         catch (error) { setMessage(error instanceof Error ? error.message : "Could not load your workspace."); setLoading(false); }
       } else {
+        window.localStorage.removeItem(SESSION_STARTED_KEY);
         setTasks([]); setProjects([]); setDeadlines([]); setSessions([]); setDistractions([]); setGymLogs([]); setReviews([]); setLoading(false);
       }
     });
-    return unsubscribe;
+    return () => {
+      if (expiryTimer) clearTimeout(expiryTimer);
+      unsubscribe();
+    };
   }, [configured]);
 
   async function startOrLoadDay(uid: string) {
@@ -149,7 +176,7 @@ export default function Home() {
     catch (error) { setMessage(authError(error)); }
   }
 
-  async function signOut() { await firebaseSignOut(firebaseAuth); setUserEmail(""); }
+  async function signOut() { await firebaseSignOut(firebaseAuth); window.localStorage.removeItem(SESSION_STARTED_KEY); setUserEmail(""); }
 
   async function insertRow(table: string, row: Record<string, unknown>) {
     if (!userId) { setMessage("Sign in to save your data."); return; }

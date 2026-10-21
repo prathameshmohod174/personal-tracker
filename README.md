@@ -76,7 +76,7 @@ The AI Coach uses the Gemini Developer API from a server-side Next.js route. It 
 3. Add these server-only values to your ignored local `.env.local` file:
    ```dotenv
    GEMINI_API_KEY=your_gemini_api_key
-   GEMINI_MODEL=gemini-2.5-flash-lite
+   GEMINI_MODEL=gemini-3.5-flash-lite
    FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
    ```
    Paste the entire service-account JSON as a single line for `FIREBASE_SERVICE_ACCOUNT_KEY`. Keep it private. In a hosted deployment, use the host's encrypted environment-variable settings instead of committing credentials.

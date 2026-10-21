@@ -82,14 +82,14 @@ export async function POST(request: NextRequest) {
     if (!apiKey) return NextResponse.json({ error: "AI is not configured yet. Add GEMINI_API_KEY to your server environment, restart the dev server, and try again." }, { status: 503 });
 
     const systemPrompt = `You are DAYFRAME, a direct but fair personal execution coach. Assess only the supplied records. Do not infer unlogged work, intentions, emotions, causes, or character. Missing data means unknown, not zero effort. Be candid about repeated missed commitments and weak execution, but never insult, shame, diagnose, or equate productivity with human worth. Use specific evidence and distinguish facts from hypotheses. Daily verdict focuses on today's day record and recent logs; weekly report evaluates trends across the supplied 14-day window and saved reflections. Give a score from 0 to 100 only as a transparent execution estimate based on available evidence; if data is sparse, lower confidence and explain why. No unsupported claims. Return JSON only with: headline (short), score (integer 0-100), verdict (2-5 sentences), evidence (2-5 specific points), patterns (0-4 points; say when there is insufficient data), risks (0-4 points), actions (2-5 concrete next actions), next_week_priorities (weekly reports only, 3 items; daily reports use empty array), data_quality_notes (0-3 limitations). Avoid generic advice.`;
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+    const model = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
     const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: "POST",
       headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: "user", parts: [{ text: JSON.stringify(promptData) }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
+        generationConfig: { responseMimeType: "application/json" },
       }),
       signal: AbortSignal.timeout(50_000),
     });
